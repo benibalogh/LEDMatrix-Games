@@ -1,7 +1,15 @@
 #pragma once
 
+constexpr auto X_ACCELERATION_OFFSET = -3091;
+constexpr auto Y_ACCELERATION_OFFSET = -4415;
+constexpr auto Z_ACCELERATION_OFFSET = 737;
+
+constexpr auto X_GYROSCOPE_OFFSET = -25;
+constexpr auto Y_GYROSCOPE_OFFSET = 20;
+constexpr auto Z_GYROSCOPE_OFFSET = 0;
+
 // generated characters must be rotated by 180 degree and flipped horizontally
-const uint64_t NUMBER_CODES_UPDOWN[] PROGMEM = {
+const uint64_t PROGMEM NUMBER_CODES_UPDOWN[] = {
     0x003c66766e66663c,
     0x0018181c1818187e,
     0x003c6660300c067e,
@@ -15,7 +23,7 @@ const uint64_t NUMBER_CODES_UPDOWN[] PROGMEM = {
 };
 constexpr auto NUMBER_CODES_UPDOWN_LENGTH = sizeof(NUMBER_CODES_UPDOWN) / sizeof(NUMBER_CODES_UPDOWN[0]);
 
-const uint64_t NUMBER_CODES_LEFTRIGHT[] PROGMEM = {
+const uint64_t PROGMEM NUMBER_CODES_LEFTRIGHT[] = {
     0x003e7f49517f3e00,
     0x0001117f7f010100,
     0x0023674549793100,
@@ -30,7 +38,7 @@ const uint64_t NUMBER_CODES_LEFTRIGHT[] PROGMEM = {
 constexpr auto NUMBER_CODES_LEFTRIGHT_LENGTH = sizeof(NUMBER_CODES_LEFTRIGHT) / sizeof(NUMBER_CODES_LEFTRIGHT[0]);
 
 // #TODO: implement universal string display mechanism (possibly with marquee functionality) - up-down and -left-right scrolling
-const uint64_t CHAR_CODES_UPPER_UPDOWN[] PROGMEM = {
+const uint64_t PROGMEM CHAR_CODES_UPPER_UPDOWN[] = {
     0x003c66667e666666,
     0x003e66663e66663e,
     0x003c66060606663c,
@@ -60,7 +68,7 @@ const uint64_t CHAR_CODES_UPPER_UPDOWN[] PROGMEM = {
 };
 constexpr auto CHAR_CODES_UPPER_UPDOWN_LENGTH = sizeof(CHAR_CODES_UPPER_UPDOWN) / sizeof(CHAR_CODES_UPPER_UPDOWN[0]);
 
-const uint64_t CHAR_CODES_UPPER_LEFTRIGHT[] PROGMEM = {
+const uint64_t PROGMEM CHAR_CODES_UPPER_LEFTRIGHT[] = {
     0x003f7f48487f3f00,
     0x007f7f49497f3600,
     0x003e7f4141632200,
@@ -90,7 +98,7 @@ const uint64_t CHAR_CODES_UPPER_LEFTRIGHT[] PROGMEM = {
 };
 constexpr auto CHAR_CODES_UPPER_LEFTRIGHT_LENGTH = sizeof(CHAR_CODES_UPPER_LEFTRIGHT) / sizeof(CHAR_CODES_UPPER_LEFTRIGHT[0]);
 
-const uint64_t CHAR_CODES_LOWER_UPDOWN[] PROGMEM = {
+const uint64_t PROGMEM CHAR_CODES_LOWER_UPDOWN[] = {
     0x0000003c607c667c,
     0x000606063e66663e,
     0x0000003c6606663c,
@@ -120,7 +128,7 @@ const uint64_t CHAR_CODES_LOWER_UPDOWN[] PROGMEM = {
 };
 constexpr auto CHAR_CODES_LOWER_UPDOWN_LENGTH = sizeof(CHAR_CODES_LOWER_UPDOWN) / sizeof(CHAR_CODES_LOWER_UPDOWN[0]);
 
-const uint64_t CHAR_CODES_LOWER_LEFTRIGHT[] PROGMEM = {
+const uint64_t PROGMEM CHAR_CODES_LOWER_LEFTRIGHT[] = {
     0x00021715151f0f00,
     0x007f7f09090f0600,
     0x000e1f11111b0a00,
@@ -150,7 +158,7 @@ const uint64_t CHAR_CODES_LOWER_LEFTRIGHT[] PROGMEM = {
 };
 constexpr auto CHAR_CODES_LOWER_LEFTRIGHT_LENGTH = sizeof(CHAR_CODES_LOWER_LEFTRIGHT) / sizeof(CHAR_CODES_LOWER_LEFTRIGHT[0]);
 
-const uint64_t DEMO_CODES[] PROGMEM = {
+const uint64_t PROGMEM DEMO_CODES[]  = {
     0x003e66666666663e,
     0x007e06063e06067e,
     0x00c6eefed6c6c6c6,
@@ -158,5 +166,6 @@ const uint64_t DEMO_CODES[] PROGMEM = {
 };
 constexpr auto DEMO_CODES_LENGTH = sizeof(DEMO_CODES) / sizeof(DEMO_CODES[0]);
 
-const uint64_t exclamationMark PROGMEM = 0x00183c3c18180018;
+const uint64_t PROGMEM exclamationMark = 0x00183c3c18180018;
+const uint64_t PROGMEM space = 0;
 // space is equal to 0, should be handled separately

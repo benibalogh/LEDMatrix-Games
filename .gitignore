@@ -1,5 +1,10 @@
-# vs folder
-.vs/
+__vm/
+
+# Debug folder
+Debug/
+
+# Rar files
+*.rar
 
 # Prerequisites
 *.d
@@ -33,3 +38,4 @@
 *.exe
 *.out
 *.app
+WallScroller/__vm/.WallScroller.vsarduino.h
