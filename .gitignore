@@ -1,5 +1,7 @@
 __vm/
 
+WallScroller/Release/
+
 # Debug folder
 Debug/
 
@@ -38,4 +40,3 @@ Debug/
 *.exe
 *.out
 *.app
-WallScroller/__vm/.WallScroller.vsarduino.h

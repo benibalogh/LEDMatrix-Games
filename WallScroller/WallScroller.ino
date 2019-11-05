@@ -23,18 +23,18 @@ constexpr auto BLOCK_COUNT = 4;      // number of 8x8 pixel matrices;
 constexpr auto BLOCK_ROW_COUNT = 8;  // number of rows per block
 constexpr auto BLOCK_COL_COUNT = 8;  // number of coloumns per block
 constexpr auto LEDMATRIX_WIDTH = BLOCK_COUNT * BLOCK_COL_COUNT;  // pixels in the whole LED matrix
-constexpr auto LEDMATRIX_DEFAULT_INTENSITY = 3;  // default LEDMatrix intensity [0-15]
+constexpr auto LEDMATRIX_DEFAULT_INTENSITY = 8;  // default LEDMatrix intensity [0-15]
 constexpr auto LEDMATRIX_MAX_INTENSITY = 15;     // max LEDMatrix intensity
 
-constexpr auto DEFAULT_SCROLL_INTERVAL = HZ_TO_MILLIS(6);  // default ms between display scrolls
-constexpr auto MIN_SCROLL_INTERVAL = HZ_TO_MILLIS(30);     // min ms between display scrolls
+constexpr auto DEFAULT_SCROLL_INTERVAL = HZ_TO_MILLIS(10); // default ms between display scrolls
+constexpr auto MIN_SCROLL_INTERVAL = HZ_TO_MILLIS(40);     // min ms between display scrolls
 constexpr auto PLAYER_SHOW_INTERVAL = 60;                  // [ms] player pixel on state duration
 constexpr auto PLAYER_HIDE_INTERVAL = 30;                  // [ms] player pixel off state duration
 
 constexpr auto TEXT_SCROLL_INTERVAL = HZ_TO_MILLIS(50);          // ms between any text scrolls
 constexpr auto PLAY_MSG_UPDATE_INTERVAL = HZ_TO_MILLIS(10);      // ms between play message updates
 constexpr auto PLAYER_POS_UPDATE_INTERVAL = HZ_TO_MILLIS(60);    // ms between player position updates
-constexpr auto DEMO_MSG_DISPLAY_INTERVAL = 1375;                 // [ms] How long should the demo message be displayed
+constexpr auto DEMO_MSG_DISPLAY_INTERVAL = 1700;//1375;                 // [ms] How long should the demo message be displayed
 constexpr auto ENDGAME_INSTENSIFY_INTERVAL = HZ_TO_MILLIS(25);   // ms between display intensity changes after game over
 constexpr auto ENDGAME_PLAYER_BLINK_INTERVAL = HZ_TO_MILLIS(5);  // ms between player pixel state changes after game over
 constexpr auto ENDGAME_AFK_INTERVAL = 30 * 1000;                 // ms after AI control is automatically turned on when in endgame
@@ -46,6 +46,7 @@ constexpr auto MIN_SPACE_BETWEEN_WALLS = 5;          // at least how many empty 
 constexpr auto MAX_SPACE_BETWEEN_WALLS = 7;          // at most how many empty rows should be between walls
 constexpr auto MAX_SPACE_BETWEEN_WALLS_PLUS_1 = MAX_SPACE_BETWEEN_WALLS + 1;
 constexpr auto DEFAULT_SPACE_BETWEEN_WALLS = MIN_SPACE_BETWEEN_WALLS;
+constexpr auto DEAULT_WALL_GAP_SIZE = 3;
 
 constexpr float INIT_PITCH = radians(175.0f);    // [radian] Rotation around Y axis needed to start the game as the MPU6050 needs time for stabilization in an upright position. Specify in degree inside radians().
 constexpr float MENU_BACK_ROLL = radians(125.0f);  // [radian] Rotation around X axis needed to restart the game. Specify in degree inside radians().
@@ -83,9 +84,9 @@ enum class MenuState : int8_t {
 };
 
 enum class MenuPitchState : int8_t {
-    left = -1,
-    center = 0,
-    right = 1
+    center = -1,
+    left = (int8_t)LEDMatrixDriver::scrollDirection::scrollUp,
+    right = (int8_t)LEDMatrixDriver::scrollDirection::scrollDown
 };
 
 // Function prototypes (only the necessary ones)
@@ -117,6 +118,8 @@ uint32_t demoTriggeredTime = 0;
 bool isFirstTextScroll = true;
 bool isMenuStepped = false;
 bool isHiscoreDisplayed = false;
+uint32_t highScoreEnteredTime = 0;
+uint32_t lastMenuNavigationTime = 0;
 
 State state;
 MenuState menuState = MenuState::play;
@@ -188,6 +191,7 @@ void setup() {
     //}
 
     uint32_t hiscore = 0;
+    //EEPROM.put(HISCORE_ADDRESS, hiscore);
     EEPROM.get(HISCORE_ADDRESS, hiscore);
     Serial.print("Hiscore: ");
     Serial.println(hiscore);
@@ -374,6 +378,8 @@ void resetVariables() {
     isMenuStepped = false;
     menuPitchState = MenuPitchState::center;
     isHiscoreDisplayed = false;
+    highScoreEnteredTime = 0;
+    lastMenuNavigationTime = 0;
     ledMatrix.clear();
     ledMatrix.setIntensity(LEDMATRIX_DEFAULT_INTENSITY);
     ledMatrix.display();
@@ -474,17 +480,7 @@ void setMenuTextByState(char* menuText, MenuState menuState) {
 
 void handleMenu() {
     static char menuText[16] = "PLAY    ";
-
-    // handle menu enter command
-    if (ypr.roll > MENU_ENTER_ROLL && ypr.roll < MENU_ENTER_ROLL + radians(20.0f)) {
-        if (menuState == MenuState::play) {
-            state = State::changeToPlay;
-        } else if (menuState == MenuState::demo) {
-            state = State::demoMsg;
-        } else if (menuState == MenuState::hiscore) {
-            state = State::hiscore;
-        }
-    }
+    static uint8_t menuScrollCount = 8;
 
     // #TODO: handle menu back command (relevant if more than one game is implemented)
 
@@ -495,20 +491,42 @@ void handleMenu() {
         menuState = (int8_t)menuState - 1 < 0 ? MenuState::hiscore : (MenuState)((int8_t)menuState - 1);
         setMenuTextByState(menuText, menuState);
         isFirstTextScroll = true;
+        menuScrollCount = 0;
+        lastMenuNavigationTime = currentTime;
     } else if (menuPitchState == MenuPitchState::center && ypr.pitch < MENU_NAVIGATION_PITCH && ypr.pitch > MENU_NAVIGATION_PITCH - radians(20)) {
         // right
         menuPitchState = MenuPitchState::right;
         menuState = (MenuState)(((int8_t)menuState + 1) % (int8_t)MenuState::length);
         setMenuTextByState(menuText, menuState);
         isFirstTextScroll = true;
+        menuScrollCount = 0;
+        lastMenuNavigationTime = currentTime;
     } else if ((menuPitchState == MenuPitchState::left || menuPitchState == MenuPitchState::right) && (ypr.pitch < radians(-170) && ypr.pitch > radians(-180) || ypr.pitch > radians(170) && ypr.pitch < radians(180))) {
         // center
         menuPitchState = MenuPitchState::center;
-        Serial.println("Cenered!");
     }
 
-    // #TODO: first 8 scrolls should scroll out text in menuPitchState direction 
-    displayTextScroll(menuText);    
+    // #TODO: first 8 scrolls should scroll out text in menuPitchState direction
+    if (menuScrollCount < 8) {
+        ++menuScrollCount;
+        ledMatrix.scroll((LEDMatrixDriver::scrollDirection)menuPitchState);
+        ledMatrix.display();
+        delay(TEXT_SCROLL_INTERVAL);  // #TODO: should not use delay()!
+    } else {
+        displayTextScroll(menuText);
+    }
+
+    // handle menu enter command
+    if (ypr.roll > MENU_ENTER_ROLL&& ypr.roll < MENU_ENTER_ROLL + radians(20.0f)) {
+        if (menuState == MenuState::play) {
+            state = State::changeToPlay;
+        } else if (menuState == MenuState::demo) {
+            state = State::demoMsg;
+        } else if (menuState == MenuState::hiscore) {
+            state = State::hiscore;
+            highScoreEnteredTime = currentTime;
+        }
+    }
 }
 
 // uses globals: playMsgUpdatesCount, currentPlayMessage
@@ -536,7 +554,7 @@ void displayPlayMsg() {
 }
 
 void displayDemoMsg() {
-    static const char* demoText = "DEMO    ";
+    static const char* demoText = " DEMO      ";
 
     displayTextScroll(demoText);
     if (currentTime - demoTriggeredTime > DEMO_MSG_DISPLAY_INTERVAL) {
@@ -569,7 +587,7 @@ void gameLoop() {
     if (currentTime - lastScrollTime > scrollInterval) {
         // create wall if enough empty scrolls have been made
         if (emptyScrolls >= currentSpaceLeftBetweenWalls) {
-            wallCol = createWall(2);
+            wallCol = createWall(DEAULT_WALL_GAP_SIZE);
             wallsLeft = random(MIN_WALL_THICKNESS, MAX_WALL_THICKNESS + 1);
             emptyScrolls = 0;
             int speedCorrection = map(scrollInterval, DEFAULT_SCROLL_INTERVAL, MIN_SCROLL_INTERVAL, 0, 4);
@@ -718,7 +736,7 @@ void displayHiscore() {
     }
 
     // change to demo mode (AI control) in case there is no user interaction for a long time
-    if (currentTime - gameOverTime > ENDGAME_AFK_INTERVAL) {
+    if (currentTime - highScoreEnteredTime > ENDGAME_AFK_INTERVAL) {
         state = State::demoMsg;
         demoTriggeredTime = currentTime;
     }
