@@ -37,7 +37,7 @@ constexpr auto PLAYER_POS_UPDATE_INTERVAL = HZ_TO_MILLIS(60);    // ms between p
 constexpr auto DEMO_MSG_DISPLAY_INTERVAL = 1700;//1375;                 // [ms] How long should the demo message be displayed
 constexpr auto ENDGAME_INSTENSIFY_INTERVAL = HZ_TO_MILLIS(25);   // ms between display intensity changes after game over
 constexpr auto ENDGAME_PLAYER_BLINK_INTERVAL = HZ_TO_MILLIS(5);  // ms between player pixel state changes after game over
-constexpr auto ENDGAME_AFK_INTERVAL = 30 * 1000;                 // ms after AI control is automatically turned on when in endgame
+constexpr auto AFK_INTERVAL = 30 * 1000;                 // ms after AI control is automatically turned on when in endgame
 
 constexpr auto ENDGAME_INSTENSIFY_CYCLES_COUNT = 3;  // how many cycles should the endgame intensification take place
 constexpr auto MIN_WALL_THICKNESS = 1;               // at least how thick the walls should be
@@ -52,7 +52,7 @@ constexpr float INIT_PITCH = radians(175.0f);    // [radian] Rotation around Y a
 constexpr float MENU_BACK_ROLL = radians(125.0f);  // [radian] Rotation around X axis needed to restart the game. Specify in degree inside radians().
 constexpr float MENU_ENTER_ROLL = radians(-155.0f);
 constexpr auto TILT_ANGLE = 165;
-constexpr float MENU_NAVIGATION_PITCH = radians(TILT_ANGLE);
+constexpr float MENU_NAVIGATION_PITCH = radians(TILT_ANGLE - 10);
 
 constexpr auto HISCORE_ADDRESS = 0;
 
@@ -378,8 +378,7 @@ void resetVariables() {
     isMenuStepped = false;
     menuPitchState = MenuPitchState::center;
     isHiscoreDisplayed = false;
-    highScoreEnteredTime = 0;
-    lastMenuNavigationTime = 0;
+    lastMenuNavigationTime = currentTime;
     ledMatrix.clear();
     ledMatrix.setIntensity(LEDMATRIX_DEFAULT_INTENSITY);
     ledMatrix.display();
@@ -421,14 +420,12 @@ void scrollText(const char* text) {
     static size_t scrolledTextLength;
     static uint16_t scrollCount;
     static uint64_t currScrolledLetter = 0;
-    //static int8_t currScrolledBlock = 0;
     static uint64_t scrollMask = 0xFF00000000000000; //0xFF;
     
     if (isFirstTextScroll) {
         ledMatrix.clear();
         scrolledTextLength = strlen(text);
         scrollCount = 0;
-        //currScrolledBlock = -1;
         scrollMask = 0xFF00000000000000;  //0xFF;
         isFirstTextScroll = false;
     }
@@ -436,7 +433,6 @@ void scrollText(const char* text) {
     if (scrollCount % 8 == 0) {
         memcpy_P(&currScrolledLetter, getCharCode(text[(scrollCount / 8) % scrolledTextLength]), sizeof(currScrolledLetter));
         scrollMask = 0xFF00000000000000;  //0xFF;
-        //++currScrolledBlock;
     }
 
     ledMatrix.scroll(LEDMatrixDriver::scrollDirection::scrollRight);
@@ -463,6 +459,7 @@ void displayTitle() {
         resetVariables();
         //state = State::playMessage;
         state = State::menu;
+        resetVariables();
     } else {
         displayTextScroll(title);
     }
@@ -483,6 +480,28 @@ void handleMenu() {
     static uint8_t menuScrollCount = 8;
 
     // #TODO: handle menu back command (relevant if more than one game is implemented)
+
+    // handle menu enter command
+    if (ypr.roll > MENU_ENTER_ROLL&& ypr.roll < MENU_ENTER_ROLL + radians(20.0f)) {
+        if (menuState == MenuState::play) {
+            state = State::changeToPlay;
+        } else if (menuState == MenuState::demo) {
+            state = State::demoMsg;
+            demoTriggeredTime = 0;  // reset so that Demo msg is not scrolled once again
+        } else if (menuState == MenuState::hiscore) {
+            state = State::hiscore;
+            highScoreEnteredTime = currentTime;
+        }
+    }
+
+    // handle AFK
+    if (currentTime - lastMenuNavigationTime > AFK_INTERVAL) {
+        state = State::demoMsg;
+        if (menuState == MenuState::demo)
+            demoTriggeredTime = 0;
+        else
+            demoTriggeredTime = currentTime;  // reset so that Demo msg is not scrolled once again
+    }
 
     // handle menu navigation
     if (menuPitchState == MenuPitchState::center && ypr.pitch > -MENU_NAVIGATION_PITCH && ypr.pitch < -MENU_NAVIGATION_PITCH + radians(20)) {
@@ -506,7 +525,6 @@ void handleMenu() {
         menuPitchState = MenuPitchState::center;
     }
 
-    // #TODO: first 8 scrolls should scroll out text in menuPitchState direction
     if (menuScrollCount < 8) {
         ++menuScrollCount;
         ledMatrix.scroll((LEDMatrixDriver::scrollDirection)menuPitchState);
@@ -514,18 +532,6 @@ void handleMenu() {
         delay(TEXT_SCROLL_INTERVAL);  // #TODO: should not use delay()!
     } else {
         displayTextScroll(menuText);
-    }
-
-    // handle menu enter command
-    if (ypr.roll > MENU_ENTER_ROLL&& ypr.roll < MENU_ENTER_ROLL + radians(20.0f)) {
-        if (menuState == MenuState::play) {
-            state = State::changeToPlay;
-        } else if (menuState == MenuState::demo) {
-            state = State::demoMsg;
-        } else if (menuState == MenuState::hiscore) {
-            state = State::hiscore;
-            highScoreEnteredTime = currentTime;
-        }
     }
 }
 
@@ -556,11 +562,11 @@ void displayPlayMsg() {
 void displayDemoMsg() {
     static const char* demoText = " DEMO      ";
 
-    displayTextScroll(demoText);
     if (currentTime - demoTriggeredTime > DEMO_MSG_DISPLAY_INTERVAL) {
         resetVariables();
         state = State::demo;
     }
+    displayTextScroll(demoText);
 
     // simple text display
     /*if (!isDemoMsgDisplayed) {
@@ -640,6 +646,7 @@ void gameLoop() {
         } else if (state == State::demo && ypr.roll < MENU_BACK_ROLL && ypr.roll > MENU_BACK_ROLL - radians(20.0f)) {
             // Go back to Menu
             state = State::menu;
+            resetVariables();
             //state = State::changeToPlay;
         }
 
@@ -709,7 +716,7 @@ void displayGameScore() {
     }
 
     // change to demo mode (AI control) in case there is no user interaction for a long time
-    if (currentTime - gameOverTime > ENDGAME_AFK_INTERVAL) {
+    if (currentTime - gameOverTime > AFK_INTERVAL) {
         state = State::demoMsg;
         demoTriggeredTime = currentTime;
     }
@@ -736,7 +743,7 @@ void displayHiscore() {
     }
 
     // change to demo mode (AI control) in case there is no user interaction for a long time
-    if (currentTime - highScoreEnteredTime > ENDGAME_AFK_INTERVAL) {
+    if (currentTime - highScoreEnteredTime > AFK_INTERVAL) {
         state = State::demoMsg;
         demoTriggeredTime = currentTime;
     }
