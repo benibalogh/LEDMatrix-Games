@@ -735,7 +735,11 @@ void displayGameScore() {
 }
 
 void displayHiscore() {
+    static uint8_t upsideDownCount = 0;
+    static bool isUpsideDown = false;
+
     if (!isHiscoreDisplayed) {
+        upsideDownCount = 0;
         uint32_t hiscore = 0;
         EEPROM.get(HISCORE_ADDRESS, hiscore);
         displayScore(hiscore);
@@ -753,5 +757,19 @@ void displayHiscore() {
         // Go back to Menu
         state = State::menu;
         resetVariables();
+    }
+
+    // reset hiscore after 3 rolls
+    if (!isUpsideDown && abs(ypr.pitch) < radians(10)) {
+        isUpsideDown = true;
+        if (++upsideDownCount == 3) {
+            uint32_t hiscore = 0;
+            EEPROM.put(HISCORE_ADDRESS, hiscore);  // reset hiscore
+            EEPROM.get(HISCORE_ADDRESS, hiscore);
+            displayScore(hiscore);
+            upsideDownCount = 0;
+        }
+    } else if (isUpsideDown && abs(ypr.pitch) > radians(170)) {
+        isUpsideDown = false;
     }
 }
