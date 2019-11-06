@@ -16,7 +16,7 @@ constexpr int HZ_TO_MILLIS(int hz) {
     return 1000 / hz;
 }
 
-// Constexprs defines
+// Constexpr defines
 constexpr auto LEDMATRIX_CS_PIN = 9;  // Chip Select pin of LED matrix PCB
 
 constexpr auto BLOCK_COUNT = 4;      // number of 8x8 pixel matrices;
@@ -34,7 +34,7 @@ constexpr auto PLAYER_HIDE_INTERVAL = 30;                  // [ms] player pixel 
 constexpr auto TEXT_SCROLL_INTERVAL = HZ_TO_MILLIS(50);          // ms between any text scrolls
 constexpr auto PLAY_MSG_UPDATE_INTERVAL = HZ_TO_MILLIS(10);      // ms between play message updates
 constexpr auto PLAYER_POS_UPDATE_INTERVAL = HZ_TO_MILLIS(60);    // ms between player position updates
-constexpr auto DEMO_MSG_DISPLAY_INTERVAL = 1700;//1375;                 // [ms] How long should the demo message be displayed
+constexpr auto DEMO_MSG_DISPLAY_INTERVAL = 1700;                 // [ms] How long should the demo message be displayed
 constexpr auto ENDGAME_INSTENSIFY_INTERVAL = HZ_TO_MILLIS(25);   // ms between display intensity changes after game over
 constexpr auto ENDGAME_PLAYER_BLINK_INTERVAL = HZ_TO_MILLIS(5);  // ms between player pixel state changes after game over
 constexpr auto AFK_INTERVAL = 30 * 1000;                 // ms after AI control is automatically turned on when in endgame
@@ -48,11 +48,11 @@ constexpr auto MAX_SPACE_BETWEEN_WALLS_PLUS_1 = MAX_SPACE_BETWEEN_WALLS + 1;
 constexpr auto DEFAULT_SPACE_BETWEEN_WALLS = MIN_SPACE_BETWEEN_WALLS;
 constexpr auto DEAULT_WALL_GAP_SIZE = 3;
 
-constexpr float INIT_PITCH = radians(175.0f);    // [radian] Rotation around Y axis needed to start the game as the MPU6050 needs time for stabilization in an upright position. Specify in degree inside radians().
-constexpr float MENU_BACK_ROLL = radians(125.0f);  // [radian] Rotation around X axis needed to restart the game. Specify in degree inside radians().
-constexpr float MENU_ENTER_ROLL = radians(-155.0f);
-constexpr auto TILT_ANGLE = 165;
-constexpr float MENU_NAVIGATION_PITCH = radians(TILT_ANGLE - 10);
+constexpr float INIT_PITCH = radians(175.0f);                      // [radian] Rotation around Y axis needed to start the game as the MPU6050 needs time for stabilization in an upright position. Specify in degree inside radians().
+constexpr float MENU_BACK_ROLL = radians(125.0f);                  // [radian] Rotation around X axis needed to go back to the menu. Specify in degrees as the parameter of radians() function.
+constexpr float MENU_ENTER_ROLL = radians(-155.0f);                // [radian] Rotation around X axis needed to select the current menu option. Specify in degrees as the parameter of radians() function.
+constexpr auto TILT_ANGLE = 165;                                   // [degree] Rotation around Y axis needed to .
+constexpr float MENU_NAVIGATION_PITCH = radians(TILT_ANGLE - 10);  // [radian] Rotation around Y axis needed to navigate between menu options.
 
 constexpr auto HISCORE_ADDRESS = 0;
 
@@ -129,13 +129,6 @@ MenuPitchState menuPitchState = MenuPitchState::center;
 uint8_t* frameBuffer;
 const uint16_t multiplesOfTen[] = { 1000, 100, 10, 1 };
 
-
-
-
-
-
-
-
 void setup() {
     // init RNG
     randomSeed(generateRandomSeed());
@@ -155,43 +148,7 @@ void setup() {
 
     frameBuffer = ledMatrix.getFrameBuffer();
 
-    // Display text containing any alphanumeric characters
-    /*
-    displayText("1 dS");
-    while (true);
-    */
-
-    // Chasing dot for testing purposess
-    /*
-    while (true) {
-        for (int y = 0; y < BLOCK_ROW_COUNT; y++) {
-            for (int x = 0; x < LEDMATRIX_WIDTH; x++) {
-                ledMatrix.setPixel(x, y, HIGH);
-                ledMatrix.display();
-                delay(25);
-                ledMatrix.setPixel(x, y, LOW);
-                ledMatrix.display();
-                delay(25);
-            }
-        }    
-    }
-    */
-    
-    // Title msg test
-    //while (true) {
-    //    for (int i = 0; i < strlen("WALL SCROLLER    ") * 8; i++) {
-    //        //if (i > 8 * 8) {
-    //        //    ledMatrix.scroll(LEDMatrixDriver::scrollDirection::scrollUp);
-    //        //    ledMatrix.display();
-    //        //} else {
-    //            scrollText("WALL SCROLLER    ");
-    //        //}
-    //        delay(20);
-    //    }
-    //}
-
     uint32_t hiscore = 0;
-    //EEPROM.put(HISCORE_ADDRESS, hiscore);
     EEPROM.get(HISCORE_ADDRESS, hiscore);
     Serial.print("Hiscore: ");
     Serial.println(hiscore);
@@ -245,13 +202,6 @@ void loop() {
     }
 }
 
-
-
-
-
-
-
-
 // generates random seed according to the von Neumann method
 uint32_t generateRandomSeed() {
     uint8_t storedBits = 0;
@@ -297,7 +247,6 @@ void displayScroll() {
 void updatePlayerPosition(uint8_t x, uint8_t y, bool enabled) {
     if (detectCollision(x, y)) {
         state = State::changeToGameOver;
-        //return;  // sometimes the old position must be retained... handle it with a parameter
     }
     ledMatrix.setPixel(playerX, playerY, LOW);  // turn off old position
     ledMatrix.setPixel(playerX ? playerX - 1 : playerX, playerY, LOW);  // turn off scrolled positon
@@ -457,7 +406,6 @@ void displayTitle() {
     static uint32_t lastTitleScrollTime = 0;
     if (abs(ypr.pitch) > INIT_PITCH) {
         resetVariables();
-        //state = State::playMessage;
         state = State::menu;
         resetVariables();
     } else {
@@ -567,16 +515,6 @@ void displayDemoMsg() {
         state = State::demo;
     }
     displayTextScroll(demoText);
-
-    // simple text display
-    /*if (!isDemoMsgDisplayed) {
-        resetVariables();
-        displayText("DEMO");
-        isDemoMsgDisplayed = true;
-    } else if (currentTime - demoTriggeredTime > DEMO_MSG_DISPLAY_INTERVAL) {
-        ledMatrix.clear();
-        state = State::demo;
-    }*/
 }
 
 void initPlay() {
@@ -647,7 +585,6 @@ void gameLoop() {
             // Go back to Menu
             state = State::menu;
             resetVariables();
-            //state = State::changeToPlay;
         }
 
         lastPlayerPosUpdateTime = currentTime;
@@ -721,12 +658,7 @@ void displayGameScore() {
         demoTriggeredTime = currentTime;
     }
 
-    // change to play mode if MENU_ENTER_ROLL angle is reached
-    /*
-    if (ypr.roll > MENU_ENTER_ROLL && ypr.roll < MENU_ENTER_ROLL + radians(20.0f)) {
-        state = State::changeToPlay;
-    }
-    */
+    // go back to menu if MENU_BACK_ROLL angle is reached
     if (ypr.roll < MENU_BACK_ROLL && ypr.roll > MENU_BACK_ROLL - radians(20.0f)) {
         // Go back to Menu
         state = State::menu;
