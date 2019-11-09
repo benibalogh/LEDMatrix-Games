@@ -1,12 +1,12 @@
 #pragma once
 
-constexpr auto X_ACCELERATION_OFFSET = -3091;
-constexpr auto Y_ACCELERATION_OFFSET = -4415;
-constexpr auto Z_ACCELERATION_OFFSET = 737;
+constexpr auto X_ACCELERATION_OFFSET = -3133;//-3091;
+constexpr auto Y_ACCELERATION_OFFSET = -4425;//-4415;
+constexpr auto Z_ACCELERATION_OFFSET = 737;//737;
 
-constexpr auto X_GYROSCOPE_OFFSET = -25;
-constexpr auto Y_GYROSCOPE_OFFSET = 20;
-constexpr auto Z_GYROSCOPE_OFFSET = 0;
+constexpr auto X_GYROSCOPE_OFFSET = -12;//-25;
+constexpr auto Y_GYROSCOPE_OFFSET = 22;//20;
+constexpr auto Z_GYROSCOPE_OFFSET = -1;//0;
 
 // generated characters must be rotated by 180 degree and flipped horizontally
 const uint64_t PROGMEM NUMBER_CODES_UPDOWN[] = {
