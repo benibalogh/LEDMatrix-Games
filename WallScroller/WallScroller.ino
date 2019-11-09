@@ -16,6 +16,10 @@ constexpr int HZ_TO_MILLIS(int hz) {
     return 1000 / hz;
 }
 
+constexpr uint32_t HZ_TO_MICROS(int hz) {
+    return 1000000 / hz;
+}
+
 // Constexpr defines
 constexpr auto LEDMATRIX_CS_PIN = 9;  // Chip Select pin of LED matrix PCB
 
@@ -26,10 +30,11 @@ constexpr auto LEDMATRIX_WIDTH = BLOCK_COUNT * BLOCK_COL_COUNT;  // pixels in th
 constexpr auto LEDMATRIX_DEFAULT_INTENSITY = 8;  // default LEDMatrix intensity [0-15]
 constexpr auto LEDMATRIX_MAX_INTENSITY = 15;     // max LEDMatrix intensity
 
-constexpr auto DEFAULT_SCROLL_INTERVAL = HZ_TO_MILLIS(10); // default ms between display scrolls
-constexpr auto MIN_SCROLL_INTERVAL = HZ_TO_MILLIS(40);     // min ms between display scrolls
-constexpr auto PLAYER_SHOW_INTERVAL = 60;                  // [ms] player pixel on state duration
-constexpr auto PLAYER_HIDE_INTERVAL = 30;                  // [ms] player pixel off state duration
+constexpr auto SCROLL_SPEED_INCREASE_DURATION = 60 * 1000000;  // how long should the scroll speed increase be
+constexpr uint32_t DEFAULT_SCROLL_INTERVAL = HZ_TO_MICROS(9);  // default ms between display scrolls
+constexpr uint32_t MIN_SCROLL_INTERVAL = HZ_TO_MICROS(40);     // min ms between display scrolls
+constexpr auto PLAYER_SHOW_INTERVAL = 60;                      // [ms] player pixel on state duration
+constexpr auto PLAYER_HIDE_INTERVAL = 30;                      // [ms] player pixel off state duration
 
 constexpr auto TEXT_SCROLL_INTERVAL = HZ_TO_MILLIS(50);          // ms between any text scrolls
 constexpr auto PLAY_MSG_UPDATE_INTERVAL = HZ_TO_MILLIS(10);      // ms between play message updates
@@ -101,7 +106,7 @@ MPU6050Libized motion(2);
 YawPitchRoll ypr;
 
 // Global variables
-uint32_t currentTime;
+uint32_t currentTime, currentMicros;
 uint8_t emptyScrolls = 255;
 uint8_t playerX = 2, playerY = 3;
 bool playerState = LOW;
@@ -120,6 +125,7 @@ bool isMenuStepped = false;
 bool isHiscoreDisplayed = false;
 uint32_t highScoreEnteredTime = 0;
 uint32_t lastMenuNavigationTime = 0;
+uint32_t gameStartTime = 0;
 
 State state;
 MenuState menuState = MenuState::play;
@@ -156,6 +162,7 @@ void setup() {
 
 void loop() {
     currentTime = millis();
+    currentMicros = micros();
 
     // process data from MPU6050
     if (motion.checkMPUDataAvailable()) {
@@ -294,6 +301,8 @@ void movePlayer(PlayerMove playerMove) {
 }
 
 void displayScore(uint16_t score) {
+    score = constrain(score, 0, 9999);
+
     ledMatrix.clear();
     ledMatrix.setIntensity(LEDMATRIX_DEFAULT_INTENSITY);
 
@@ -328,6 +337,7 @@ void resetVariables() {
     menuPitchState = MenuPitchState::center;
     isHiscoreDisplayed = false;
     lastMenuNavigationTime = currentTime;
+    gameStartTime = currentMicros;
     ledMatrix.clear();
     ledMatrix.setIntensity(LEDMATRIX_DEFAULT_INTENSITY);
     ledMatrix.display();
@@ -499,7 +509,8 @@ void displayPlayMsg() {
                 ledMatrix.setIntensity(LEDMATRIX_DEFAULT_INTENSITY);
             }
         } else {
-            ledMatrix.clear();
+            //ledMatrix.clear();
+            resetVariables();
             state = State::play;
         }
         ++playMsgUpdatesCount;
@@ -528,13 +539,19 @@ void gameLoop() {
     // Scroll the screen
     static uint32_t lastScrollTime, lastPlayerBlinkTime, lastPlayerPosUpdateTime, scrollInterval = DEFAULT_SCROLL_INTERVAL;
     static uint8_t wallCol, wallsLeft, currentSpaceLeftBetweenWalls = DEFAULT_SPACE_BETWEEN_WALLS;
-    if (currentTime - lastScrollTime > scrollInterval) {
+    if (currentMicros - lastScrollTime > scrollInterval) {
+        uint32_t elapsedMicrosFromGameStart = currentMicros - gameStartTime;
+        elapsedMicrosFromGameStart = constrain(elapsedMicrosFromGameStart, 0, SCROLL_SPEED_INCREASE_DURATION);
+
+        scrollInterval = elapsedMicrosFromGameStart * (((float)MIN_SCROLL_INTERVAL - DEFAULT_SCROLL_INTERVAL) / SCROLL_SPEED_INCREASE_DURATION) + DEFAULT_SCROLL_INTERVAL;
+
         // create wall if enough empty scrolls have been made
         if (emptyScrolls >= currentSpaceLeftBetweenWalls) {
             wallCol = createWall(DEAULT_WALL_GAP_SIZE);
             wallsLeft = random(MIN_WALL_THICKNESS, MAX_WALL_THICKNESS + 1);
             emptyScrolls = 0;
-            int speedCorrection = map(scrollInterval, DEFAULT_SCROLL_INTERVAL, MIN_SCROLL_INTERVAL, 0, 4);
+            uint8_t speedCorrection = map(scrollInterval, DEFAULT_SCROLL_INTERVAL, MIN_SCROLL_INTERVAL, 0, 5);
+            Serial.println(speedCorrection);
             currentSpaceLeftBetweenWalls = random(MIN_SPACE_BETWEEN_WALLS + speedCorrection, MAX_SPACE_BETWEEN_WALLS_PLUS_1 + speedCorrection);
         }
 
@@ -560,9 +577,8 @@ void gameLoop() {
         }
 
         ++score;
-        scrollInterval = map(constrain(score, 0, 600), 0, 600, DEFAULT_SCROLL_INTERVAL, MIN_SCROLL_INTERVAL);
 
-        lastScrollTime = currentTime;
+        lastScrollTime = currentMicros;
     }
 
     // Update player position
